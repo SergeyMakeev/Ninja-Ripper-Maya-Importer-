@@ -5,6 +5,8 @@ import os
 import datetime
 import time
 
+flipUvField = ""
+textureIndexField = ""
 progressBarControl = ""
 winID = "NinjaRipperImporter"
 ripSignature = 0xDEADC0DE
@@ -38,7 +40,7 @@ def readFloat(inFile):
     return struct.unpack('f', inFile.read(4))[0]
 
 
-def importRipFile(filePath, textureIndex):
+def importRipFile(filePath, textureIndex, flipUv):
     ripDir = os.path.dirname(filePath)
     ripName = getFileNameWithoutExtension(filePath)
 
@@ -202,6 +204,8 @@ def importRipFile(filePath, textureIndex):
                 tu = tmp
             elif j == Tc0_V_Idx:
                 tv = tmp
+                if flipUv:
+                    tv = -tv
 
         vertices.append(om.MPoint(vx, vy, vz))
         vertexNormals.append(om.MVector(nx, ny, nz))
@@ -285,8 +289,10 @@ def importRipFile(filePath, textureIndex):
     return
 
 
-def doImport(fieldID):
-    textureIndex = mc.intField(fieldID, query=True, value=True)
+def doImport():
+    global textureIndexField
+    textureIndex = mc.intField(textureIndexField, query=True, value=True)
+    flipUv = mc.checkBox(flipUvField, value=True)
     # print textureIndex
 
     timeStart = datetime.datetime.fromtimestamp(time.mktime(time.gmtime()))
@@ -295,7 +301,7 @@ def doImport(fieldID):
         fileName = filesToImport[i]
         print fileName
         mc.progressBar(progressBarControl, edit=True, pr=i)
-        importRipFile(fileName, textureIndex)
+        importRipFile(fileName, textureIndex, flipUv)
 
     timeEnd = datetime.datetime.fromtimestamp(time.mktime(time.gmtime()))
     workTime = timeEnd - timeStart
@@ -319,12 +325,17 @@ def showImportDialog(filesCount):
 
     mc.gridLayout("gridLayout", numberOfRowsColumns=(1, 2), cellWidthHeight=(80, 20))
     mc.text(label="Texture index")
-    textureIndex = mc.intField(minValue=0, maxValue=16, value=0)
+
+    global textureIndexField
+    textureIndexField = mc.intField(minValue=0, maxValue=16, value=0)
     mc.setParent("..")
+
+    global flipUvField
+    flipUvField = mc.checkBox("Flip UV (vertical)", value=False)
 
     mc.separator(style="none", height=15)
 
-    buttonCommand = "doImport('" + textureIndex + "')"
+    buttonCommand = "doImport()"
     # print buttonCommand
     mc.button(label="Import " + str(filesCount) + " file(s)", command=buttonCommand, backgroundColor=(0.0, 0.6, 0.0))
     mc.separator(style="none", height=2)
